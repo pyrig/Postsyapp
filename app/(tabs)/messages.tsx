@@ -5,7 +5,7 @@ import { useEphemeralMessages } from '@/hooks/useEphemeralMessages';
 import { formatTimestamp } from '@/utils/time';
 import { useState } from 'react';
 import { EphemeralChatWindow } from '@/components/EphemeralChatWindow';
-import { UserSearchResults } from '@/components/UserSearchResults';
+import { UserSearchResults } from '../../components/UserSearchResults';
 
 export default function Messages() {
   const { 
