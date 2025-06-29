@@ -3,10 +3,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LogOut, Shield, Bell, CircleHelp as HelpCircle, User } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
+import { generateEphemeralHandle } from '@/utils/ephemeralHandles';
+import { useState, useEffect } from 'react';
 
 export default function Settings() {
   const router = useRouter();
   const { logout, user } = useAuth();
+  const [userHandle, setUserHandle] = useState<string>('');
+
+  // Generate a consistent handle for the user
+  useEffect(() => {
+    if (user?.email) {
+      // In a real app, this would be stored and retrieved from the backend
+      // For now, we'll generate a consistent handle based on user email
+      const handle = generateEphemeralHandle();
+      setUserHandle(handle);
+    }
+  }, [user?.email]);
 
   const formatPhoneNumber = (phone: string) => {
     // Format phone number for display
@@ -68,8 +81,18 @@ export default function Settings() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Settings</Text>
-        <Text style={styles.subtitle}>Manage your Postsy experience</Text>
+        <View style={styles.headerContent}>
+          <View style={styles.titleSection}>
+            <Text style={styles.title}>Settings</Text>
+            <Text style={styles.subtitle}>Manage your Postsy experience</Text>
+          </View>
+          {userHandle && (
+            <View style={styles.handleSection}>
+              <Text style={styles.handleLabel}>Your Handle</Text>
+              <Text style={styles.handleText}>@{userHandle}</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -87,6 +110,11 @@ export default function Settings() {
                 {user.phoneNumber && (
                   <Text style={styles.userPhone}>
                     {formatPhoneNumber(user.phoneNumber)}
+                  </Text>
+                )}
+                {userHandle && (
+                  <Text style={styles.userHandleDisplay}>
+                    Handle: @{userHandle}
                   </Text>
                 )}
               </View>
@@ -141,6 +169,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#2D3748',
   },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  titleSection: {
+    flex: 1,
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -150,6 +186,27 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#718096',
+  },
+  handleSection: {
+    alignItems: 'flex-end',
+    backgroundColor: '#2D3748',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#00FFFF',
+  },
+  handleLabel: {
+    fontSize: 10,
+    color: '#718096',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  handleText: {
+    fontSize: 14,
+    color: '#00FFFF',
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   content: {
     flex: 1,
@@ -192,6 +249,17 @@ const styles = StyleSheet.create({
   userPhone: {
     fontSize: 14,
     color: '#718096',
+    marginBottom: 4,
+  },
+  userHandleDisplay: {
+    fontSize: 13,
+    color: '#00FFFF',
+    fontWeight: '500',
+    backgroundColor: 'rgba(0, 255, 255, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
   },
   settingsSection: {
     backgroundColor: '#2D3748',
