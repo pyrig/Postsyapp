@@ -3,6 +3,7 @@ import { Echo } from '@/types/echo';
 import { generatePseudonym } from '@/utils/pseudonym';
 import { moderateContent } from '@/utils/moderation';
 import { useLocation } from '@/hooks/useLocation';
+import { useAuth } from '@/hooks/useAuth';
 
 const mockEchos: Echo[] = [
   {
@@ -91,6 +92,7 @@ export function useEchos() {
   const [echos, setEchos] = useState<Echo[]>(mockEchos);
   const [loading, setLoading] = useState(false);
   const { currentLocation } = useLocation();
+  const { user } = useAuth();
 
   const refreshEchos = async () => {
     setLoading(true);
@@ -122,10 +124,13 @@ export function useEchos() {
       throw new Error(moderationResult.reason);
     }
 
+    // Use the user's handle as the pseudonym, or generate one if not available
+    const pseudonym = user?.handle || generatePseudonym();
+
     const newEcho: Echo = {
       id: Date.now().toString(),
       content,
-      pseudonym: generatePseudonym(),
+      pseudonym,
       location: currentLocation || 'Campus Area',
       timestamp: new Date().toISOString(),
       upvotes: 0,

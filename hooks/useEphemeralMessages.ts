@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { EphemeralConversation, EphemeralMessage, ActivityNotification } from '@/types/message';
-import { generateConversationHandles } from '@/utils/ephemeralHandles';
+import { useAuth } from '@/hooks/useAuth';
 
 export function useEphemeralMessages() {
   const [conversations, setConversations] = useState<EphemeralConversation[]>([]);
   const [notifications, setNotifications] = useState<ActivityNotification[]>([]);
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
 
   // Clean up expired conversations
   useEffect(() => {
@@ -40,6 +41,25 @@ export function useEphemeralMessages() {
     };
     
     setNotifications(prev => [newNotification, ...prev].slice(0, 50)); // Keep last 50 notifications
+  };
+
+  const generateRandomHandle = (): string => {
+    const adjectives = ['Silent', 'Curious', 'Thoughtful', 'Gentle', 'Wise', 'Mysterious', 'Peaceful'];
+    const nouns = ['Voice', 'Echo', 'Whisper', 'Soul', 'Mind', 'Spirit', 'Shadow'];
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    
+    const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    const letter = letters[Math.floor(Math.random() * letters.length)];
+    
+    return `${adjective} ${noun} ${letter}`;
+  };
+
+  const generateConversationHandles = (): { user: string; other: string } => {
+    const userHandle = user?.handle || generateRandomHandle();
+    const otherHandle = generateRandomHandle();
+    
+    return { user: userHandle, other: otherHandle };
   };
 
   const startConversation = async (postId: string, postContent: string): Promise<string> => {
@@ -87,7 +107,7 @@ export function useEphemeralMessages() {
         return existingConversation.id;
       }
 
-      const handles = generateConversationHandles();
+      const userHandle = user?.handle || generateRandomHandle();
       const now = new Date();
       const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
       
@@ -96,8 +116,8 @@ export function useEphemeralMessages() {
         postId: '',
         postContent: '',
         participantHandles: {
-          user: handles.user,
-          other: targetHandle, // Use the actual target handle
+          user: userHandle,
+          other: targetHandle,
         },
         messages: [],
         createdAt: now.toISOString(),
