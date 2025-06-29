@@ -121,7 +121,7 @@ export function EchoCard({ echo, onReply, onHashtagPress }: EchoCardProps) {
             <Text style={styles.pseudonym}>{echo.pseudonym}</Text>
             <View style={styles.metadata}>
               <Text style={styles.location}>{echo.location}</Text>
-              <Text style={styles.separator}>•</Text>
+              <Text style={styles.separator}>-</Text>
               <Text style={styles.timestamp}>{formatTimestamp(echo.timestamp)}</Text>
             </View>
           </View>

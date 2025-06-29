@@ -3,23 +3,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LogOut, Shield, Bell, CircleHelp as HelpCircle, User } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
-import { generateEphemeralHandle } from '@/utils/ephemeralHandles';
-import { useState, useEffect } from 'react';
 
 export default function Settings() {
   const router = useRouter();
   const { logout, user } = useAuth();
-  const [userHandle, setUserHandle] = useState<string>('');
-
-  // Generate a consistent handle for the user
-  useEffect(() => {
-    if (user?.email) {
-      // In a real app, this would be stored and retrieved from the backend
-      // For now, we'll generate a consistent handle based on user email
-      const handle = generateEphemeralHandle();
-      setUserHandle(handle);
-    }
-  }, [user?.email]);
 
   const formatPhoneNumber = (phone: string) => {
     // Format phone number for display
@@ -86,10 +73,10 @@ export default function Settings() {
             <Text style={styles.title}>Settings</Text>
             <Text style={styles.subtitle}>Manage your Postsy experience</Text>
           </View>
-          {userHandle && (
+          {user?.handle && (
             <View style={styles.handleSection}>
               <Text style={styles.handleLabel}>Your Handle</Text>
-              <Text style={styles.handleText}>@{userHandle}</Text>
+              <Text style={styles.handleText}>@{user.handle}</Text>
             </View>
           )}
         </View>
@@ -102,19 +89,15 @@ export default function Settings() {
             <View style={styles.userInfo}>
               <View style={styles.userAvatar}>
                 <Text style={styles.userAvatarText}>
-                  {user.email.charAt(0).toUpperCase()}
+                  {user.handle.charAt(0).toUpperCase()}
                 </Text>
               </View>
               <View style={styles.userDetails}>
+                <Text style={styles.userHandle}>@{user.handle}</Text>
                 <Text style={styles.userEmail}>{user.email}</Text>
                 {user.phoneNumber && (
                   <Text style={styles.userPhone}>
                     {formatPhoneNumber(user.phoneNumber)}
-                  </Text>
-                )}
-                {userHandle && (
-                  <Text style={styles.userHandleDisplay}>
-                    Handle: @{userHandle}
                   </Text>
                 )}
               </View>
@@ -240,26 +223,20 @@ const styles = StyleSheet.create({
   userDetails: {
     flex: 1,
   },
+  userHandle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#00FFFF',
+    marginBottom: 4,
+  },
   userEmail: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: 14,
+    color: '#E2E8F0',
     marginBottom: 4,
   },
   userPhone: {
     fontSize: 14,
     color: '#718096',
-    marginBottom: 4,
-  },
-  userHandleDisplay: {
-    fontSize: 13,
-    color: '#00FFFF',
-    fontWeight: '500',
-    backgroundColor: 'rgba(0, 255, 255, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
   },
   settingsSection: {
     backgroundColor: '#2D3748',

@@ -1,9 +1,11 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { generateHandle } from '@/utils/handleGenerator';
 
 interface User {
   id: string;
   email: string;
   phoneNumber: string;
+  handle: string; // Add handle to user object
 }
 
 interface AuthContextType {
@@ -22,43 +24,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate loading auth state
-    const timer = setTimeout(() => {
+    // Check for existing user session
+    const checkExistingSession = () => {
+      const savedUser = localStorage.getItem('postsy_user');
+      if (savedUser) {
+        try {
+          const userData = JSON.parse(savedUser);
+          setUser(userData);
+        } catch (error) {
+          localStorage.removeItem('postsy_user');
+        }
+      }
       setIsLoading(false);
-    }, 1000);
+    };
 
-    return () => clearTimeout(timer);
+    checkExistingSession();
   }, []);
 
   const login = async (email: string, password: string) => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Mock user data
-    const mockUser = {
-      id: '1',
-      email: email,
-      phoneNumber: '+1234567890', // Mock phone number for existing users
-    };
+    // Check if user already exists in localStorage
+    const existingUser = localStorage.getItem(`postsy_user_${email}`);
+    let userData: User;
     
-    setUser(mockUser);
+    if (existingUser) {
+      userData = JSON.parse(existingUser);
+    } else {
+      // Create new user data with generated handle
+      userData = {
+        id: Date.now().toString(),
+        email: email,
+        phoneNumber: '+1234567890', // Mock phone number for existing users
+        handle: generateHandle(),
+      };
+      localStorage.setItem(`postsy_user_${email}`, JSON.stringify(userData));
+    }
+    
+    localStorage.setItem('postsy_user', JSON.stringify(userData));
+    setUser(userData);
   };
 
   const signup = async (email: string, phoneNumber: string, password: string) => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Mock user data
-    const mockUser = {
-      id: '1',
+    // Create user data with generated handle
+    const userData: User = {
+      id: Date.now().toString(),
       email: email,
       phoneNumber: phoneNumber,
+      handle: generateHandle(),
     };
     
-    setUser(mockUser);
+    // Save user data
+    localStorage.setItem(`postsy_user_${email}`, JSON.stringify(userData));
+    localStorage.setItem('postsy_user', JSON.stringify(userData));
+    setUser(userData);
   };
 
   const logout = async () => {
+    localStorage.removeItem('postsy_user');
     setUser(null);
   };
 
