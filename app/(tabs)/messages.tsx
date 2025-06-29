@@ -1,10 +1,11 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MessageCircle, Clock, Trash2, Lock } from 'lucide-react-native';
+import { MessageCircle, Clock, Trash2, Lock, Search, User, Plus } from 'lucide-react-native';
 import { useEphemeralMessages } from '@/hooks/useEphemeralMessages';
 import { formatTimestamp } from '@/utils/time';
 import { useState } from 'react';
 import { EphemeralChatWindow } from '@/components/EphemeralChatWindow';
+import { UserSearchResults } from '@/components/UserSearchResults';
 
 export default function Messages() {
   const { 
@@ -14,10 +15,13 @@ export default function Messages() {
     markNotificationAsRead,
     clearAllNotifications,
     sendMessage,
+    startDirectConversation,
   } = useEphemeralMessages();
   
   const [refreshing, setRefreshing] = useState(false);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -33,6 +37,22 @@ export default function Messages() {
   const handleSendMessage = async (content: string): Promise<boolean> => {
     if (!selectedConversationId) return false;
     return await sendMessage(selectedConversationId, content);
+  };
+
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    setShowSearchResults(text.length > 0);
+  };
+
+  const handleUserSelect = async (handle: string) => {
+    try {
+      const conversationId = await startDirectConversation(handle);
+      setSelectedConversationId(conversationId);
+      setSearchQuery('');
+      setShowSearchResults(false);
+    } catch (error) {
+      console.error('Failed to start conversation:', error);
+    }
   };
 
   const selectedConversation = selectedConversationId 
@@ -101,8 +121,40 @@ export default function Messages() {
           )}
         </View>
         <Text style={styles.subtitle}>
-          All your ephemeral conversations and messages
+          Search users and manage your ephemeral conversations
         </Text>
+      </View>
+
+      {/* Search Section */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchContainer}>
+          <Search size={20} color="#718096" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search users by handle to start a conversation..."
+            placeholderTextColor="#718096"
+            value={searchQuery}
+            onChangeText={handleSearchChange}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => {
+                setSearchQuery('');
+                setShowSearchResults(false);
+              }}
+            >
+              <Text style={styles.clearSearch}>Clear</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Search Results */}
+        {showSearchResults && (
+          <UserSearchResults
+            query={searchQuery}
+            onUserSelect={handleUserSelect}
+          />
+        )}
       </View>
 
       <ScrollView
@@ -117,6 +169,7 @@ export default function Messages() {
             <Text style={styles.sectionTitle}>Active Conversations</Text>
             {conversations
               .filter(c => c.isActive)
+              .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime())
               .map((conversation) => (
                 <TouchableOpacity
                   key={conversation.id}
@@ -129,6 +182,11 @@ export default function Messages() {
                       <Text style={styles.conversationTitle}>
                         {conversation.participantHandles.other}
                       </Text>
+                      {conversation.type === 'direct' && (
+                        <View style={styles.directBadge}>
+                          <Text style={styles.directBadgeText}>Direct</Text>
+                        </View>
+                      )}
                     </View>
                     <View style={styles.conversationMeta}>
                       <Text style={styles.conversationTime}>
@@ -136,9 +194,17 @@ export default function Messages() {
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.conversationContext}>
-                    About: {conversation.postContent}
-                  </Text>
+                  
+                  {conversation.type === 'post' ? (
+                    <Text style={styles.conversationContext}>
+                      About: {conversation.postContent}
+                    </Text>
+                  ) : (
+                    <Text style={styles.conversationContext}>
+                      Direct conversation with {conversation.participantHandles.other}
+                    </Text>
+                  )}
+                  
                   <View style={styles.conversationStats}>
                     <Text style={styles.conversationStat}>
                       {conversation.messages.length} messages
@@ -147,17 +213,26 @@ export default function Messages() {
                       {conversation.maxMessages - conversation.messageCount.user} exchanges left
                     </Text>
                   </View>
+                  
+                  {conversation.messages.length > 0 && (
+                    <View style={styles.lastMessage}>
+                      <Text style={styles.lastMessageText} numberOfLines={1}>
+                        {conversation.messages[conversation.messages.length - 1].isFromCurrentUser ? 'You: ' : ''}
+                        {conversation.messages[conversation.messages.length - 1].content}
+                      </Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               ))}
           </View>
         )}
 
-        {/* All Messages */}
+        {/* Recent Messages */}
         {allMessages.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>All Messages</Text>
+            <Text style={styles.sectionTitle}>Recent Messages</Text>
             <View style={styles.messagesList}>
-              {allMessages.map((message) => (
+              {allMessages.slice(0, 10).map((message) => (
                 <TouchableOpacity
                   key={message.id}
                   style={styles.messageCard}
@@ -187,7 +262,10 @@ export default function Messages() {
                     {message.content}
                   </Text>
                   <Text style={styles.messageContext} numberOfLines={1}>
-                    About: {message.conversation.postContent}
+                    {message.conversation.type === 'post' 
+                      ? `About: ${message.conversation.postContent}`
+                      : 'Direct conversation'
+                    }
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -196,13 +274,22 @@ export default function Messages() {
         )}
 
         {/* Empty State */}
-        {conversations.length === 0 && notifications.length === 0 && (
+        {conversations.length === 0 && notifications.length === 0 && !showSearchResults && (
           <View style={styles.emptyState}>
             <MessageCircle size={48} color="#4A5568" />
-            <Text style={styles.emptyStateText}>No messages yet</Text>
+            <Text style={styles.emptyStateText}>No conversations yet</Text>
             <Text style={styles.emptyStateSubtext}>
-              Start private conversations from posts to see messages here
+              Search for users above or start private conversations from posts
             </Text>
+            <View style={styles.emptyStateActions}>
+              <TouchableOpacity 
+                style={styles.emptyStateButton}
+                onPress={() => setSearchQuery('@')}
+              >
+                <Plus size={16} color="#1A202C" />
+                <Text style={styles.emptyStateButtonText}>Start Conversation</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -248,6 +335,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#718096',
   },
+  searchSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2D3748',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2D3748',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  clearSearch: {
+    fontSize: 14,
+    color: '#00FFFF',
+    fontWeight: '500',
+  },
   scrollView: {
     flex: 1,
   },
@@ -279,11 +391,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
   },
   conversationTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  directBadge: {
+    backgroundColor: '#00FFFF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  directBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#1A202C',
   },
   conversationMeta: {
     alignItems: 'flex-end',
@@ -301,11 +425,24 @@ const styles = StyleSheet.create({
   conversationStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 8,
   },
   conversationStat: {
     fontSize: 12,
     color: '#718096',
     fontWeight: '500',
+  },
+  lastMessage: {
+    backgroundColor: 'rgba(0, 255, 255, 0.05)',
+    borderRadius: 8,
+    padding: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#00FFFF',
+  },
+  lastMessageText: {
+    fontSize: 13,
+    color: '#E2E8F0',
+    fontStyle: 'italic',
   },
   messagesList: {
     gap: 12,
@@ -388,5 +525,23 @@ const styles = StyleSheet.create({
     color: '#718096',
     textAlign: 'center',
     lineHeight: 20,
+    marginBottom: 24,
+  },
+  emptyStateActions: {
+    alignItems: 'center',
+  },
+  emptyStateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00FFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  emptyStateButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A202C',
   },
 });

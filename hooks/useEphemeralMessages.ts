@@ -19,7 +19,7 @@ export function useEphemeralMessages() {
             addNotification({
               type: 'conversation_expired',
               conversationId: conv.id,
-              postContent: conv.postContent,
+              postContent: conv.postContent || 'Direct conversation',
             });
           }
           return !expired;
@@ -62,6 +62,51 @@ export function useEphemeralMessages() {
         maxMessages: 5,
         isActive: true,
         lastActivity: now.toISOString(),
+        type: 'post',
+      };
+      
+      setConversations(prev => [newConversation, ...prev]);
+      return newConversation.id;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startDirectConversation = async (targetHandle: string): Promise<string> => {
+    setLoading(true);
+    
+    try {
+      // Check if conversation already exists with this user
+      const existingConversation = conversations.find(conv => 
+        conv.type === 'direct' && 
+        conv.participantHandles.other === targetHandle &&
+        conv.isActive
+      );
+      
+      if (existingConversation) {
+        return existingConversation.id;
+      }
+
+      const handles = generateConversationHandles();
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+      
+      const newConversation: EphemeralConversation = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        postId: '',
+        postContent: '',
+        participantHandles: {
+          user: handles.user,
+          other: targetHandle, // Use the actual target handle
+        },
+        messages: [],
+        createdAt: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        messageCount: { user: 0, other: 0 },
+        maxMessages: 5,
+        isActive: true,
+        lastActivity: now.toISOString(),
+        type: 'direct',
       };
       
       setConversations(prev => [newConversation, ...prev]);
@@ -80,7 +125,7 @@ export function useEphemeralMessages() {
       addNotification({
         type: 'conversation_limit_reached',
         conversationId,
-        postContent: conversation.postContent,
+        postContent: conversation.postContent || 'Direct conversation',
       });
       return false;
     }
@@ -135,6 +180,10 @@ export function useEphemeralMessages() {
       "That's beautifully put.",
       "I appreciate you opening up about this.",
       "Your words are really thoughtful.",
+      "Hello! Nice to connect with you.",
+      "Thanks for reaching out, how are you?",
+      "I'm glad we can chat like this.",
+      "What's on your mind today?",
     ];
     
     const responseMessage: EphemeralMessage = {
@@ -165,7 +214,7 @@ export function useEphemeralMessages() {
     addNotification({
       type: 'new_message',
       conversationId,
-      postContent: conversation.postContent,
+      postContent: conversation.postContent || 'Direct conversation',
       senderHandle: conversation.participantHandles.other,
     });
   };
@@ -203,6 +252,7 @@ export function useEphemeralMessages() {
     notifications,
     loading,
     startConversation,
+    startDirectConversation,
     sendMessage,
     getConversation,
     markNotificationAsRead,

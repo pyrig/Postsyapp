@@ -25,6 +25,7 @@ export interface EphemeralConversation {
   maxMessages: number;
   isActive: boolean;
   lastActivity: string;
+  type: 'post' | 'direct';
 }
 
 export interface ActivityNotification {

@@ -11,7 +11,7 @@ import {
   Platform,
   Animated
 } from 'react-native';
-import { X, Send, Lock, Clock } from 'lucide-react-native';
+import { X, Send, Lock, Clock, User } from 'lucide-react-native';
 import { EphemeralConversation } from '@/types/message';
 import { formatTimestamp } from '@/utils/time';
 
@@ -100,9 +100,16 @@ export function EphemeralChatWindow({
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Lock size={16} color="#00FFFF" />
+              {conversation.type === 'direct' ? (
+                <User size={16} color="#00FFFF" />
+              ) : (
+                <Lock size={16} color="#00FFFF" />
+              )}
               <Text style={styles.headerTitle}>
-                {conversation.participantHandles.user} ↔ {conversation.participantHandles.other}
+                {conversation.type === 'direct' 
+                  ? `${conversation.participantHandles.other}`
+                  : `${conversation.participantHandles.user} ↔ ${conversation.participantHandles.other}`
+                }
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -124,10 +131,21 @@ export function EphemeralChatWindow({
           </View>
 
           {/* Context */}
-          <View style={styles.contextBar}>
-            <Text style={styles.contextLabel}>About:</Text>
-            <Text style={styles.contextText}>{conversation.postContent}</Text>
-          </View>
+          {conversation.type === 'post' && conversation.postContent && (
+            <View style={styles.contextBar}>
+              <Text style={styles.contextLabel}>About:</Text>
+              <Text style={styles.contextText}>{conversation.postContent}</Text>
+            </View>
+          )}
+
+          {conversation.type === 'direct' && (
+            <View style={styles.contextBar}>
+              <Text style={styles.contextLabel}>Direct Conversation</Text>
+              <Text style={styles.contextText}>
+                Private ephemeral chat with {conversation.participantHandles.other}
+              </Text>
+            </View>
+          )}
 
           {/* Messages */}
           <ScrollView 
@@ -161,9 +179,16 @@ export function EphemeralChatWindow({
             
             {conversation.messages.length === 0 && (
               <View style={styles.emptyState}>
-                <Lock size={32} color="#4A5568" />
+                {conversation.type === 'direct' ? (
+                  <User size={32} color="#4A5568" />
+                ) : (
+                  <Lock size={32} color="#4A5568" />
+                )}
                 <Text style={styles.emptyStateText}>
-                  Start your ephemeral conversation
+                  {conversation.type === 'direct' 
+                    ? 'Start your direct conversation'
+                    : 'Start your ephemeral conversation'
+                  }
                 </Text>
                 <Text style={styles.emptyStateSubtext}>
                   Messages will disappear after 24 hours or 5 exchanges
