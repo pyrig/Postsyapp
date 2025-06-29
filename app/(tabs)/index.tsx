@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Image, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Clock, MapPin, Bell } from 'lucide-react-native';
+import { Plus, Clock, TrendingUp, Bell } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { EchoCard } from '@/components/EchoCard';
 import { PostModal } from '@/components/PostModal';
@@ -86,9 +86,9 @@ export default function MainFeed() {
             style={[styles.toggleButton, feedType === 'hot' && styles.toggleButtonActive]}
             onPress={() => setFeedType('hot')}
           >
-            <MapPin size={16} color={feedType === 'hot' ? '#1A202C' : '#718096'} />
+            <TrendingUp size={16} color={feedType === 'hot' ? '#1A202C' : '#718096'} />
             <Text style={[styles.toggleText, feedType === 'hot' && styles.toggleTextActive]}>
-              Nearby
+              Hot
             </Text>
           </TouchableOpacity>
         </View>
