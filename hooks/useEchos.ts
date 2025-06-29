@@ -5,21 +5,42 @@ import { moderateContent } from '@/utils/moderation';
 import { useLocation } from '@/hooks/useLocation';
 import { useAuth } from '@/hooks/useAuth';
 
-// Start with empty array - no mock data
-const mockEchos: Echo[] = [];
-
 export function useEchos() {
-  const [echos, setEchos] = useState<Echo[]>(mockEchos);
+  const [echos, setEchos] = useState<Echo[]>([]);
   const [loading, setLoading] = useState(false);
   const { currentLocation } = useLocation();
   const { user } = useAuth();
+
+  // Load saved posts from localStorage on mount
+  useEffect(() => {
+    const loadSavedPosts = () => {
+      try {
+        const savedPosts = localStorage.getItem('postsy_echos');
+        if (savedPosts) {
+          const parsedPosts = JSON.parse(savedPosts);
+          setEchos(parsedPosts);
+        }
+      } catch (error) {
+        console.error('Error loading saved posts:', error);
+      }
+    };
+
+    loadSavedPosts();
+  }, []);
+
+  // Save posts to localStorage whenever echos change
+  useEffect(() => {
+    try {
+      localStorage.setItem('postsy_echos', JSON.stringify(echos));
+    } catch (error) {
+      console.error('Error saving posts:', error);
+    }
+  }, [echos]);
 
   const refreshEchos = async () => {
     setLoading(true);
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // No longer add random mock echos - only show real user posts
     setLoading(false);
   };
 
@@ -30,11 +51,11 @@ export function useEchos() {
       throw new Error(moderationResult.reason);
     }
 
-    // Use the user's handle as the pseudonym, or generate one if not available
+    // Use the user's handle as the pseudonym
     const pseudonym = user?.handle ? `@${user.handle}` : generatePseudonym();
 
     const newEcho: Echo = {
-      id: Date.now().toString(),
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       content,
       pseudonym,
       location: currentLocation || 'Campus Area',
@@ -44,7 +65,12 @@ export function useEchos() {
       replies: 0,
     };
 
-    setEchos(prev => [newEcho, ...prev]);
+    console.log('Creating new echo:', newEcho); // Debug log
+    setEchos(prev => {
+      const updated = [newEcho, ...prev];
+      console.log('Updated echos:', updated); // Debug log
+      return updated;
+    });
   };
 
   const voteOnEcho = async (echoId: string, voteType: 'up' | 'down') => {

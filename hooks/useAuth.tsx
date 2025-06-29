@@ -5,7 +5,7 @@ interface User {
   id: string;
   email: string;
   phoneNumber: string;
-  handle: string; // Add handle to user object
+  handle: string;
 }
 
 interface AuthContextType {
@@ -26,14 +26,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Check for existing user session
     const checkExistingSession = () => {
-      const savedUser = localStorage.getItem('postsy_user');
-      if (savedUser) {
-        try {
+      try {
+        const savedUser = localStorage.getItem('postsy_user');
+        if (savedUser) {
           const userData = JSON.parse(savedUser);
           setUser(userData);
-        } catch (error) {
-          localStorage.removeItem('postsy_user');
         }
+      } catch (error) {
+        console.error('Error loading user session:', error);
+        localStorage.removeItem('postsy_user');
       }
       setIsLoading(false);
     };
@@ -56,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userData = {
         id: Date.now().toString(),
         email: email,
-        phoneNumber: '+1234567890', // Mock phone number for existing users
+        phoneNumber: '+1234567890',
         handle: generateHandle(),
       };
       localStorage.setItem(`postsy_user_${email}`, JSON.stringify(userData));

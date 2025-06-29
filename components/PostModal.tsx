@@ -76,10 +76,15 @@ export function PostModal({ visible, onClose, onPost }: PostModalProps) {
 
     setLoading(true);
     try {
+      console.log('Attempting to create post with content:', content.trim()); // Debug log
       await createEcho(content.trim());
       addHashtagsFromPost(content.trim());
+      
+      // Reset form
       setContent('');
       setShowSuggestions(false);
+      
+      // Call callbacks
       onPost();
       onClose();
       
@@ -90,6 +95,7 @@ export function PostModal({ visible, onClose, onPost }: PostModalProps) {
         [{ text: 'Great!' }]
       );
     } catch (error) {
+      console.error('Error creating post:', error); // Debug log
       Alert.alert('Error', error instanceof Error ? error.message : 'Failed to post your story. Please try again.');
     } finally {
       setLoading(false);
