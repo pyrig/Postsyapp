@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Echo } from '@/types/echo';
 import { generatePseudonym } from '@/utils/pseudonym';
 import { moderateContent } from '@/utils/moderation';
@@ -11,11 +12,11 @@ export function useEchos() {
   const { currentLocation } = useLocation();
   const { user } = useAuth();
 
-  // Load saved posts from localStorage on mount
+  // Load saved posts from AsyncStorage on mount
   useEffect(() => {
-    const loadSavedPosts = () => {
+    const loadSavedPosts = async () => {
       try {
-        const savedPosts = localStorage.getItem('postsy_echos');
+        const savedPosts = await AsyncStorage.getItem('postsy_echos');
         if (savedPosts) {
           const parsedPosts = JSON.parse(savedPosts);
           setEchos(parsedPosts);
@@ -28,12 +29,18 @@ export function useEchos() {
     loadSavedPosts();
   }, []);
 
-  // Save posts to localStorage whenever echos change
+  // Save posts to AsyncStorage whenever echos change
   useEffect(() => {
-    try {
-      localStorage.setItem('postsy_echos', JSON.stringify(echos));
-    } catch (error) {
-      console.error('Error saving posts:', error);
+    const savePosts = async () => {
+      try {
+        await AsyncStorage.setItem('postsy_echos', JSON.stringify(echos));
+      } catch (error) {
+        console.error('Error saving posts:', error);
+      }
+    };
+
+    if (echos.length > 0) {
+      savePosts();
     }
   }, [echos]);
 
