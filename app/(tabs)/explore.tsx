@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, MapPin, TrendingUp, Hash, Filter, Globe } from 'lucide-react-native';
+import { Search, MapPin, TrendingUp, Hash, Filter, Globe, Plus } from 'lucide-react-native';
 import { EchoCard } from '@/components/EchoCard';
 import { TrendingTopics } from '@/components/TrendingTopics';
 import { useEchos } from '@/hooks/useEchos';
@@ -280,6 +280,9 @@ export default function Explore() {
             ))}
             {filteredEchos.length === 0 && (
               <View style={styles.emptyState}>
+                <View style={styles.emptyStateIcon}>
+                  <Plus size={32} color="#4A5568" />
+                </View>
                 <Text style={styles.emptyStateText}>
                   {selectedHashtag 
                     ? 'No stories found with this hashtag' 
@@ -293,7 +296,7 @@ export default function Explore() {
                     ? 'Be the first to share a story with this hashtag!'
                     : searchQuery
                       ? 'Try a different search term or explore trending topics'
-                      : 'Try exploring a different location or hashtag'
+                      : 'Stories from users will appear here as they post'
                   }
                 </Text>
               </View>
@@ -507,15 +510,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 60,
   },
+  emptyStateIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#2D3748',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#4A5568',
+    borderStyle: 'dashed',
+  },
   emptyStateText: {
     fontSize: 18,
     fontWeight: '600',
     color: '#E2E8F0',
     marginBottom: 8,
+    textAlign: 'center',
   },
   emptyStateSubtext: {
     fontSize: 14,
     color: '#718096',
     textAlign: 'center',
+    lineHeight: 20,
   },
 });

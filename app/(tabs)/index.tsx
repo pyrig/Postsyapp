@@ -106,10 +106,20 @@ export default function MainFeed() {
           ))}
           {filteredEchos.length === 0 && (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No Stories yet</Text>
+              <View style={styles.emptyStateIcon}>
+                <Plus size={48} color="#4A5568" />
+              </View>
+              <Text style={styles.emptyStateText}>No Stories Yet</Text>
               <Text style={styles.emptyStateSubtext}>
-                Be the first to share something in your area!
+                Be the first to share something in your area! Tap the + button below to create your first anonymous post.
               </Text>
+              <TouchableOpacity
+                style={styles.emptyStateButton}
+                onPress={() => setShowPostModal(true)}
+              >
+                <Plus size={20} color="#1A202C" />
+                <Text style={styles.emptyStateButtonText}>Create First Post</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -224,18 +234,53 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
+    paddingHorizontal: 40,
+  },
+  emptyStateIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#2D3748',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: '#4A5568',
+    borderStyle: 'dashed',
   },
   emptyStateText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#E2E8F0',
-    marginBottom: 8,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   emptyStateSubtext: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#718096',
     textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  emptyStateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00FFFF',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 16,
+    gap: 8,
+    shadowColor: '#00FFFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  emptyStateButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1A202C',
   },
   fab: {
     position: 'absolute',
