@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Image, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Clock, TrendingUp, Bell } from 'lucide-react-native';
+import { Plus, Clock, MapPin, Bell } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { EchoCard } from '@/components/EchoCard';
 import { PostModal } from '@/components/PostModal';
@@ -19,7 +19,7 @@ export default function MainFeed() {
   const { notifications, getUnreadCount, markNotificationAsRead } = useEphemeralMessages();
   const [showPostModal, setShowPostModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [feedType, setFeedType] = useState<'new' | 'hot'>('new');
+  const [feedType, setFeedType] = useState<'new' | 'nearby'>('new');
   const [refreshing, setRefreshing] = useState(false);
 
   const unreadCount = getUnreadCount();
@@ -31,12 +31,29 @@ export default function MainFeed() {
   };
 
   const filteredEchos = echos
-    .filter(echo => feedType === 'new' ? true : echo.upvotes > 5)
+    .filter(echo => {
+      if (feedType === 'new') {
+        return true; // Show all posts
+      } else {
+        // For nearby, show posts from current location or similar areas
+        return echo.location === currentLocation || 
+               echo.location.includes('Campus') || 
+               echo.location.includes('Downtown');
+      }
+    })
     .sort((a, b) => {
       if (feedType === 'new') {
         return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
       } else {
-        return (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes);
+        // For nearby, prioritize by location match and recency
+        const aLocationMatch = a.location === currentLocation ? 1 : 0;
+        const bLocationMatch = b.location === currentLocation ? 1 : 0;
+        
+        if (aLocationMatch !== bLocationMatch) {
+          return bLocationMatch - aLocationMatch;
+        }
+        
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
       }
     });
 
@@ -83,12 +100,12 @@ export default function MainFeed() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.toggleButton, feedType === 'hot' && styles.toggleButtonActive]}
-            onPress={() => setFeedType('hot')}
+            style={[styles.toggleButton, feedType === 'nearby' && styles.toggleButtonActive]}
+            onPress={() => setFeedType('nearby')}
           >
-            <TrendingUp size={16} color={feedType === 'hot' ? '#1A202C' : '#718096'} />
-            <Text style={[styles.toggleText, feedType === 'hot' && styles.toggleTextActive]}>
-              Hot
+            <MapPin size={16} color={feedType === 'nearby' ? '#1A202C' : '#718096'} />
+            <Text style={[styles.toggleText, feedType === 'nearby' && styles.toggleTextActive]}>
+              Nearby
             </Text>
           </TouchableOpacity>
         </View>
@@ -107,18 +124,29 @@ export default function MainFeed() {
           {filteredEchos.length === 0 && (
             <View style={styles.emptyState}>
               <View style={styles.emptyStateIcon}>
-                <Plus size={48} color="#4A5568" />
+                {feedType === 'nearby' ? (
+                  <MapPin size={48} color="#4A5568" />
+                ) : (
+                  <Plus size={48} color="#4A5568" />
+                )}
               </View>
-              <Text style={styles.emptyStateText}>No Stories Yet</Text>
+              <Text style={styles.emptyStateText}>
+                {feedType === 'nearby' ? 'No Nearby Stories' : 'No Stories Yet'}
+              </Text>
               <Text style={styles.emptyStateSubtext}>
-                Be the first to share something in your area! Tap the + button below to create your first anonymous post.
+                {feedType === 'nearby' 
+                  ? `No stories found in ${currentLocation || 'your area'}. Be the first to share something from this location!`
+                  : 'Be the first to share something in your area! Tap the + button below to create your first anonymous post.'
+                }
               </Text>
               <TouchableOpacity
                 style={styles.emptyStateButton}
                 onPress={() => setShowPostModal(true)}
               >
                 <Plus size={20} color="#1A202C" />
-                <Text style={styles.emptyStateButtonText}>Create First Post</Text>
+                <Text style={styles.emptyStateButtonText}>
+                  {feedType === 'nearby' ? 'Share from Here' : 'Create First Post'}
+                </Text>
               </TouchableOpacity>
             </View>
           )}
