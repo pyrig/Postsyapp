@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Chrome as Home, Search, Settings, MessageCircle } from 'lucide-react-native';
+import { Home, Search, Settings, MessageCircle } from 'lucide-react-native';
 import { useEphemeralMessages } from '@/hooks/useEphemeralMessages';
 
 export default function TabLayout() {
