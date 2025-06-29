@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, Alert } from 'react-native';
-import { X, MapPin, Send, Hash } from 'lucide-react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, Alert, Animated } from 'react-native';
+import { X, MapPin, Send, Hash, Smile, Image as ImageIcon } from 'lucide-react-native';
 import { useLocation } from '@/hooks/useLocation';
 import { useEchos } from '@/hooks/useEchos';
 import { useHashtags } from '@/hooks/useHashtags';
@@ -17,6 +17,7 @@ export function PostModal({ visible, onClose, onPost }: PostModalProps) {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [characterWarning, setCharacterWarning] = useState(false);
   const { currentLocation } = useLocation();
   const { createEcho } = useEchos();
   const { getHashtagSuggestions, addHashtagsFromPost } = useHashtags();
@@ -24,9 +25,18 @@ export function PostModal({ visible, onClose, onPost }: PostModalProps) {
   const hashtags = extractHashtags(content);
   const hashtagCount = hashtags.length;
   const maxHashtags = 5;
+  const characterCount = content.length;
+  const maxCharacters = 280;
+
+  // Character warning animation
+  useEffect(() => {
+    setCharacterWarning(characterCount > maxCharacters * 0.9);
+  }, [characterCount, maxCharacters]);
 
   const handleContentChange = (text: string) => {
-    setContent(text);
+    if (text.length <= maxCharacters) {
+      setContent(text);
+    }
     
     // Show suggestions when user types # or when content is empty
     const shouldShowSuggestions = text.endsWith('#') || text === '' || text.includes('#');
@@ -54,6 +64,11 @@ export function PostModal({ visible, onClose, onPost }: PostModalProps) {
       return;
     }
 
+    if (content.length > maxCharacters) {
+      Alert.alert('Error', `Your post is too long. Please keep it under ${maxCharacters} characters.`);
+      return;
+    }
+
     if (hashtagCount > maxHashtags) {
       Alert.alert('Error', `You can use a maximum of ${maxHashtags} hashtags per post`);
       return;
@@ -67,17 +82,57 @@ export function PostModal({ visible, onClose, onPost }: PostModalProps) {
       setShowSuggestions(false);
       onPost();
       onClose();
+      
+      // Success feedback
+      Alert.alert(
+        'Posted Successfully!',
+        'Your anonymous story has been shared with the community.',
+        [{ text: 'Great!' }]
+      );
     } catch (error) {
-      Alert.alert('Error', 'Failed to post your story. Please try again.');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to post your story. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleClose = () => {
-    setContent('');
-    setShowSuggestions(false);
-    onClose();
+    if (content.trim()) {
+      Alert.alert(
+        'Discard Post?',
+        'You have unsaved changes. Are you sure you want to close?',
+        [
+          { text: 'Keep Writing', style: 'cancel' },
+          { 
+            text: 'Discard', 
+            style: 'destructive',
+            onPress: () => {
+              setContent('');
+              setShowSuggestions(false);
+              onClose();
+            }
+          }
+        ]
+      );
+    } else {
+      setContent('');
+      setShowSuggestions(false);
+      onClose();
+    }
+  };
+
+  const addEmoji = () => {
+    const emojis = ['😊', '❤️', '🌟', '🔥', '💭', '🌈', '✨', '🎉', '🌸', '🌙'];
+    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+    setContent(prev => prev + randomEmoji);
+  };
+
+  const addImage = () => {
+    Alert.alert(
+      'Add Image',
+      'Image sharing is coming soon! For now, describe your visual story with words.',
+      [{ text: 'OK' }]
+    );
   };
 
   return (
@@ -94,11 +149,11 @@ export function PostModal({ visible, onClose, onPost }: PostModalProps) {
           </TouchableOpacity>
           <Text style={styles.title}>Share Your Story</Text>
           <TouchableOpacity
-            style={[styles.postButton, (!content.trim() || loading) && styles.postButtonDisabled]}
+            style={[styles.postButton, (!content.trim() || loading || characterCount > maxCharacters) && styles.postButtonDisabled]}
             onPress={handlePost}
-            disabled={!content.trim() || loading}
+            disabled={!content.trim() || loading || characterCount > maxCharacters}
           >
-            <Send size={18} color={(!content.trim() || loading) ? '#718096' : '#1A202C'} />
+            <Send size={18} color={(!content.trim() || loading || characterCount > maxCharacters) ? '#718096' : '#1A202C'} />
           </TouchableOpacity>
         </View>
 
@@ -116,7 +171,6 @@ export function PostModal({ visible, onClose, onPost }: PostModalProps) {
           value={content}
           onChangeText={handleContentChange}
           multiline
-          maxLength={280}
           autoFocus
         />
 
@@ -127,10 +181,26 @@ export function PostModal({ visible, onClose, onPost }: PostModalProps) {
           visible={showSuggestions}
         />
 
+        {/* Toolbar */}
+        <View style={styles.toolbar}>
+          <View style={styles.toolbarLeft}>
+            <TouchableOpacity style={styles.toolbarButton} onPress={addEmoji}>
+              <Smile size={20} color="#718096" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.toolbarButton} onPress={addImage}>
+              <ImageIcon size={20} color="#718096" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View style={styles.footer}>
           <View style={styles.footerLeft}>
-            <Text style={styles.characterCount}>
-              {content.length}/280
+            <Text style={[
+              styles.characterCount,
+              characterWarning && styles.characterCountWarning,
+              characterCount > maxCharacters && styles.characterCountError,
+            ]}>
+              {characterCount}/{maxCharacters}
             </Text>
             {hashtagCount > 0 && (
               <View style={styles.hashtagCounter}>
@@ -200,11 +270,29 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlignVertical: 'top',
     paddingVertical: 0,
+    lineHeight: 26,
   },
-  footer: {
-    paddingTop: 20,
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: '#2D3748',
+    marginBottom: 8,
+  },
+  toolbarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  toolbarButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#2D3748',
+  },
+  footer: {
+    paddingTop: 12,
     gap: 8,
   },
   footerLeft: {
@@ -215,6 +303,14 @@ const styles = StyleSheet.create({
   characterCount: {
     fontSize: 14,
     color: '#718096',
+  },
+  characterCountWarning: {
+    color: '#F59E0B',
+    fontWeight: '600',
+  },
+  characterCountError: {
+    color: '#F56565',
+    fontWeight: '600',
   },
   hashtagCounter: {
     flexDirection: 'row',

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, MapPin, TrendingUp, Hash } from 'lucide-react-native';
+import { Search, MapPin, TrendingUp, Hash, Filter, Globe } from 'lucide-react-native';
 import { EchoCard } from '@/components/EchoCard';
 import { TrendingTopics } from '@/components/TrendingTopics';
 import { useEchos } from '@/hooks/useEchos';
@@ -11,8 +11,10 @@ export default function Explore() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [selectedHashtag, setSelectedHashtag] = useState<string | null>(null);
-  const [searchMode, setSearchMode] = useState<'location' | 'hashtag'>('location');
-  const { echos } = useEchos();
+  const [searchMode, setSearchMode] = useState<'location' | 'hashtag' | 'global'>('global');
+  const [refreshing, setRefreshing] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const { echos, refreshEchos } = useEchos();
   const { trendingTopics, searchHashtags, addToSearchHistory, searchHistory } = useHashtags();
 
   const popularLocations = [
@@ -22,7 +24,15 @@ export default function Explore() {
     'Beach Area',
     'University Square',
     'Park Central',
+    'Library District',
+    'Arts Quarter',
   ];
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshEchos();
+    setRefreshing(false);
+  };
 
   const handleHashtagPress = (hashtag: string) => {
     setSelectedHashtag(hashtag);
@@ -43,15 +53,25 @@ export default function Explore() {
     if (text.startsWith('#')) {
       setSearchMode('hashtag');
       setSelectedLocation(null);
+    } else if (text.trim() === '') {
+      setSearchMode('global');
+      setSelectedHashtag(null);
+      setSelectedLocation(null);
     } else {
       setSearchMode('location');
       setSelectedHashtag(null);
     }
   };
 
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSelectedHashtag(null);
+    setSelectedLocation(null);
+    setSearchMode('global');
+  };
+
   const filteredEchos = echos.filter(echo => {
     if (searchMode === 'hashtag' && selectedHashtag) {
-      // Filter by hashtag (this would normally check if the post contains the hashtag)
       return echo.content.toLowerCase().includes(selectedHashtag.toLowerCase());
     }
     
@@ -63,12 +83,34 @@ export default function Explore() {
       return matchesSearch && matchesLocation;
     }
     
+    if (searchMode === 'global' && searchQuery) {
+      return echo.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+             echo.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+             echo.pseudonym.toLowerCase().includes(searchQuery.toLowerCase());
+    }
+    
     return true;
   });
 
   const searchResults = searchMode === 'hashtag' && searchQuery.startsWith('#') 
     ? searchHashtags(searchQuery) 
     : [];
+
+  const getSearchModeIcon = () => {
+    switch (searchMode) {
+      case 'hashtag': return <Hash size={16} color="#00FFFF" />;
+      case 'location': return <MapPin size={16} color="#00FFFF" />;
+      default: return <Globe size={16} color="#00FFFF" />;
+    }
+  };
+
+  const getSearchModeText = () => {
+    switch (searchMode) {
+      case 'hashtag': return 'Hashtag Search';
+      case 'location': return 'Location Search';
+      default: return 'Global Search';
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -80,15 +122,31 @@ export default function Explore() {
           <Search size={20} color="#718096" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search locations or #hashtags..."
+            placeholder="Search stories, locations, or #hashtags..."
             placeholderTextColor="#718096"
             value={searchQuery}
             onChangeText={handleSearchChange}
           />
-          {searchMode === 'hashtag' && (
-            <Hash size={16} color="#00FFFF" style={styles.hashIcon} />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={clearSearch}>
+              <Text style={styles.clearSearch}>Clear</Text>
+            </TouchableOpacity>
           )}
+          <TouchableOpacity 
+            style={styles.filterButton}
+            onPress={() => setShowFilters(!showFilters)}
+          >
+            <Filter size={16} color="#718096" />
+          </TouchableOpacity>
         </View>
+
+        {/* Search Mode Indicator */}
+        {searchQuery.length > 0 && (
+          <View style={styles.searchModeIndicator}>
+            {getSearchModeIcon()}
+            <Text style={styles.searchModeText}>{getSearchModeText()}</Text>
+          </View>
+        )}
 
         {/* Search Results for Hashtags */}
         {searchMode === 'hashtag' && searchQuery.length > 1 && (
@@ -151,17 +209,24 @@ export default function Explore() {
         )}
       </View>
 
-      <ScrollView style={styles.scrollView}>
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Trending Topics */}
-        <View style={styles.contentSection}>
-          <TrendingTopics 
-            topics={trendingTopics} 
-            onHashtagPress={handleHashtagPress}
-          />
-        </View>
+        {searchMode === 'global' && (
+          <View style={styles.contentSection}>
+            <TrendingTopics 
+              topics={trendingTopics} 
+              onHashtagPress={handleHashtagPress}
+            />
+          </View>
+        )}
 
-        {/* Location Tags (only show when not in hashtag mode) */}
-        {searchMode === 'location' && (
+        {/* Location Tags (only show when not in hashtag mode and filters are shown) */}
+        {(searchMode === 'location' || showFilters) && (
           <View style={styles.locationsSection}>
             <Text style={styles.sectionTitle}>Popular Locations</Text>
             <View style={styles.locationTags}>
@@ -194,7 +259,9 @@ export default function Explore() {
                 ? `Stories with ${selectedHashtag}` 
                 : selectedLocation 
                   ? `Stories from ${selectedLocation}` 
-                  : 'Global Stories'
+                  : searchQuery
+                    ? `Search results for "${searchQuery}"`
+                    : 'All Stories'
               }
             </Text>
             <View style={styles.echoCount}>
@@ -214,12 +281,19 @@ export default function Explore() {
             {filteredEchos.length === 0 && (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateText}>
-                  {selectedHashtag ? 'No stories found with this hashtag' : 'No Stories found'}
+                  {selectedHashtag 
+                    ? 'No stories found with this hashtag' 
+                    : searchQuery
+                      ? 'No stories match your search'
+                      : 'No stories found'
+                  }
                 </Text>
                 <Text style={styles.emptyStateSubtext}>
                   {selectedHashtag 
                     ? 'Be the first to share a story with this hashtag!'
-                    : 'Try exploring a different location or hashtag'
+                    : searchQuery
+                      ? 'Try a different search term or explore trending topics'
+                      : 'Try exploring a different location or hashtag'
                   }
                 </Text>
               </View>
@@ -267,8 +341,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
   },
-  hashIcon: {
-    opacity: 0.7,
+  clearSearch: {
+    fontSize: 14,
+    color: '#00FFFF',
+    fontWeight: '500',
+  },
+  filterButton: {
+    padding: 4,
+  },
+  searchModeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(0, 255, 255, 0.1)',
+    borderRadius: 16,
+    alignSelf: 'flex-start',
+  },
+  searchModeText: {
+    fontSize: 12,
+    color: '#00FFFF',
+    fontWeight: '500',
   },
   searchResults: {
     marginTop: 12,

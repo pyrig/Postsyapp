@@ -1,10 +1,11 @@
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
-import { MessageCircle, ChevronUp, ChevronDown, Share, Lock } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Alert } from 'react-native';
+import { MessageCircle, ChevronUp, ChevronDown, Share, Lock, Heart } from 'lucide-react-native';
 import { Echo } from '@/types/echo';
 import { formatTimestamp } from '@/utils/time';
 import { generateAvatar } from '@/utils/avatar';
 import { HashtagText } from '@/components/HashtagText';
 import { useEphemeralMessages } from '@/hooks/useEphemeralMessages';
+import { useEchos } from '@/hooks/useEchos';
 import { useRef, useState } from 'react';
 
 interface EchoCardProps {
@@ -16,8 +17,12 @@ interface EchoCardProps {
 export function EchoCard({ echo, onReply, onHashtagPress }: EchoCardProps) {
   const avatar = generateAvatar(echo.pseudonym);
   const { startConversation } = useEphemeralMessages();
+  const { voteOnEcho, replyToEcho } = useEchos();
   const [isStartingConversation, setIsStartingConversation] = useState(false);
+  const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
+  const [isLiked, setIsLiked] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const heartAnim = useRef(new Animated.Value(1)).current;
 
   const handlePrivateReply = async () => {
     if (isStartingConversation) return;
@@ -40,9 +45,69 @@ export function EchoCard({ echo, onReply, onHashtagPress }: EchoCardProps) {
 
     try {
       await startConversation(echo.id, echo.content);
+      Alert.alert(
+        'Private Conversation Started',
+        'You can now chat privately about this post. Check your Messages tab.',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to start conversation. Please try again.');
     } finally {
       setIsStartingConversation(false);
     }
+  };
+
+  const handleVote = async (voteType: 'up' | 'down') => {
+    if (userVote === voteType) return; // Prevent double voting
+    
+    try {
+      await voteOnEcho(echo.id, voteType);
+      setUserVote(voteType);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to vote. Please try again.');
+    }
+  };
+
+  const handleReply = async () => {
+    try {
+      await replyToEcho(echo.id);
+      onReply?.(echo);
+      Alert.alert('Reply Added', 'Your reply has been added to this post.');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to reply. Please try again.');
+    }
+  };
+
+  const handleLike = () => {
+    setIsLiked(!isLiked);
+    
+    // Animate heart
+    Animated.sequence([
+      Animated.timing(heartAnim, {
+        toValue: 1.3,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(heartAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handleShare = () => {
+    Alert.alert(
+      'Share Post',
+      'Share this anonymous post with others?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Share', onPress: () => {
+          // In a real app, this would open share sheet
+          Alert.alert('Shared!', 'Post shared successfully.');
+        }}
+      ]
+    );
   };
 
   return (
@@ -73,21 +138,62 @@ export function EchoCard({ echo, onReply, onHashtagPress }: EchoCardProps) {
       <View style={styles.actions}>
         <TouchableOpacity 
           style={styles.actionButton}
-          onPress={() => onReply?.(echo)}
+          onPress={handleReply}
         >
           <MessageCircle size={18} color="#718096" />
           <Text style={styles.actionText}>{echo.replies}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton}>
-          <ChevronUp size={18} color="#718096" />
-          <Text style={styles.actionText}>{echo.upvotes}</Text>
+        <TouchableOpacity 
+          style={[
+            styles.actionButton,
+            userVote === 'up' && styles.activeUpvote,
+          ]}
+          onPress={() => handleVote('up')}
+        >
+          <ChevronUp 
+            size={18} 
+            color={userVote === 'up' ? '#10B981' : '#718096'} 
+          />
+          <Text style={[
+            styles.actionText,
+            userVote === 'up' && styles.activeUpvoteText,
+          ]}>
+            {echo.upvotes}
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton}>
-          <ChevronDown size={18} color="#718096" />
-          <Text style={styles.actionText}>{echo.downvotes}</Text>
+        <TouchableOpacity 
+          style={[
+            styles.actionButton,
+            userVote === 'down' && styles.activeDownvote,
+          ]}
+          onPress={() => handleVote('down')}
+        >
+          <ChevronDown 
+            size={18} 
+            color={userVote === 'down' ? '#F56565' : '#718096'} 
+          />
+          <Text style={[
+            styles.actionText,
+            userVote === 'down' && styles.activeDownvoteText,
+          ]}>
+            {echo.downvotes}
+          </Text>
         </TouchableOpacity>
+
+        <Animated.View style={{ transform: [{ scale: heartAnim }] }}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={handleLike}
+          >
+            <Heart 
+              size={18} 
+              color={isLiked ? '#F56565' : '#718096'}
+              fill={isLiked ? '#F56565' : 'none'}
+            />
+          </TouchableOpacity>
+        </Animated.View>
 
         <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
           <TouchableOpacity 
@@ -103,13 +209,16 @@ export function EchoCard({ echo, onReply, onHashtagPress }: EchoCardProps) {
           </TouchableOpacity>
         </Animated.View>
 
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={handleShare}
+        >
           <Share size={18} color="#718096" />
         </TouchableOpacity>
       </View>
 
       {echo.replies > 0 && (
-        <TouchableOpacity style={styles.viewReplies}>
+        <TouchableOpacity style={styles.viewReplies} onPress={handleReply}>
           <Text style={styles.viewRepliesText}>
             View {echo.replies} {echo.replies === 1 ? 'reply' : 'replies'}
           </Text>
@@ -191,6 +300,16 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 2,
   },
+  activeUpvote: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+  },
+  activeDownvote: {
+    backgroundColor: 'rgba(245, 101, 101, 0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+  },
   privateButton: {
     backgroundColor: 'rgba(0, 255, 255, 0.1)',
     borderRadius: 16,
@@ -206,6 +325,14 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 14,
     color: '#718096',
+  },
+  activeUpvoteText: {
+    color: '#10B981',
+    fontWeight: '600',
+  },
+  activeDownvoteText: {
+    color: '#F56565',
+    fontWeight: '600',
   },
   viewReplies: {
     marginTop: 12,
