@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateHandle } from '@/utils/handleGenerator';
 
 interface User {
@@ -25,16 +26,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Check for existing user session
-    const checkExistingSession = () => {
+    const checkExistingSession = async () => {
       try {
-        const savedUser = localStorage.getItem('postsy_user');
+        const savedUser = await AsyncStorage.getItem('postsy_user');
         if (savedUser) {
           const userData = JSON.parse(savedUser);
           setUser(userData);
         }
       } catch (error) {
         console.error('Error loading user session:', error);
-        localStorage.removeItem('postsy_user');
+        await AsyncStorage.removeItem('postsy_user');
       }
       setIsLoading(false);
     };
@@ -46,8 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Check if user already exists in localStorage
-    const existingUser = localStorage.getItem(`postsy_user_${email}`);
+    // Check if user already exists in AsyncStorage
+    const existingUser = await AsyncStorage.getItem(`postsy_user_${email}`);
     let userData: User;
     
     if (existingUser) {
@@ -60,10 +61,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phoneNumber: '+1234567890',
         handle: generateHandle(),
       };
-      localStorage.setItem(`postsy_user_${email}`, JSON.stringify(userData));
+      await AsyncStorage.setItem(`postsy_user_${email}`, JSON.stringify(userData));
     }
     
-    localStorage.setItem('postsy_user', JSON.stringify(userData));
+    await AsyncStorage.setItem('postsy_user', JSON.stringify(userData));
     setUser(userData);
   };
 
@@ -80,13 +81,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     
     // Save user data
-    localStorage.setItem(`postsy_user_${email}`, JSON.stringify(userData));
-    localStorage.setItem('postsy_user', JSON.stringify(userData));
+    await AsyncStorage.setItem(`postsy_user_${email}`, JSON.stringify(userData));
+    await AsyncStorage.setItem('postsy_user', JSON.stringify(userData));
     setUser(userData);
   };
 
   const logout = async () => {
-    localStorage.removeItem('postsy_user');
+    await AsyncStorage.removeItem('postsy_user');
     setUser(null);
   };
 
