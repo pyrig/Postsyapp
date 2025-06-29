@@ -11,6 +11,8 @@
     "noEmit": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
+    "isolatedModules": true,
+    "allowImportingTsExtensions": false,
     "paths": {
       "@/*": ["./*"]
     }
@@ -19,8 +21,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts",
-    "nativewind-env.d.ts"
+    "expo-env.d.ts"
   ],
   "exclude": [
     "node_modules"

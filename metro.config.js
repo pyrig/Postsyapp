@@ -12,4 +12,12 @@ config.resolver.unstable_conditionNames = ['require', 'import', 'react-native'];
 // Explicitly set the babel transformer
 config.transformer.babelTransformerPath = require.resolve('metro-react-native-babel-transformer');
 
+// Add TypeScript support
+config.transformer.getTransformOptions = async () => ({
+  transform: {
+    experimentalImportSupport: false,
+    inlineRequires: true,
+  },
+});
+
 module.exports = config;
